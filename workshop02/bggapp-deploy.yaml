@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
       - name: bggapp-container
-        image: stackupiss/bgg-backend:v1
+        image: stackupiss/bgg-backend:v2
         imagePullPolicy: IfNotPresent
         envFrom:
         - configMapRef:
@@ -53,7 +53,7 @@ metadata:
   namespace: bggns
 data:
    BGG_DB_USER: root
-   BGG_DB_HOST: bggdb-svc.bgg.svc.cluster.local
+   BGG_DB_HOST: bggdb-svc.bggns.svc.cluster.local
 
 ---
 apiVersion: v1
@@ -83,5 +83,28 @@ spec:
     name: bggapp-po
   ports:
   - name: bggapp-web-port
-    port: 80
+    port: 3000
     targetPort: web-port
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: bggapp-ing
+  namespace: bggns
+  labels:
+    app: bgg
+    name: bggapp-ing
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: bgg-139.59.223.165.nip.io
+    http: 
+      paths:
+      - path: /
+        pathType: Prefix
+        backend: 
+          service:
+            name: bggapp-svc
+            port:
+              name: bggapp-web-port

@@ -1,0 +1,119 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cs-pvc
+  namespace: csns
+spec:
+  accessModes: 
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: do-block-storage-retain
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cs-cm
+  namespace: csns
+data:
+   TZ: Asia/Singapore
+   DEFAULT_WORKSPACE: /config/workspace
+   PROXY_DOMAIN: code-139.59.223.165.nip.io
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cs-secret
+  namespace: csns
+type: Opaque
+data:
+  PASSWORD: cGFzc3dvcmQ=
+  SUDO_PASSWORD: cGFzc3dvcmQ=
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cs-deploy
+  namespace: csns
+  labels:
+    app: cs
+    name: cs-deploy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cs
+      name: cs-po
+  template:
+    metadata:
+      name: cs-po
+      labels:
+        app: cs
+        name: cs-po    
+    spec:
+      volumes:
+      - name: cs-data-vol
+        persistentVolumeClaim:
+          claimName: cs-pvc
+      containers:
+      - name: cs-container
+        image: linuxserver/code-server:amd64-4.22.0
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: cs-data-vol
+          mountPath: /config/workspace
+        ports:
+        - name: cs-web-port
+          containerPort: 8443       
+        envFrom:
+        - configMapRef:
+            name: cs-cm
+        - secretRef:
+            name: cs-secret             
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cs-svc
+  namespace: csns
+  labels:
+    app: cs
+    name: cs-svc  
+spec:
+  type: ClusterIP
+  selector:
+    app: cs
+    name: cs-po
+  ports:
+  - name: cs-svc-port
+    port: 8443
+    targetPort: cs-web-port
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cs-ing
+  namespace: csns
+  labels:
+    app: cs
+    name: cs-ing
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: code-139.59.223.165.nip.io
+    http: 
+      paths:
+      - path: /
+        pathType: Prefix
+        backend: 
+          service:
+            name: cs-svc
+            port:
+              name: cs-svc-port
