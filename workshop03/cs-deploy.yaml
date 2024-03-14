@@ -74,7 +74,14 @@ spec:
         - configMapRef:
             name: cs-cm
         - secretRef:
-            name: cs-secret             
+            name: cs-secret
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 32Mi            
 
 ---
 apiVersion: v1

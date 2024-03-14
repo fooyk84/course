@@ -1,0 +1,56 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bggdb-hsvc
+  namespace: bggns
+  labels:
+    app: bgg
+    name: bggdb-hsvc  
+spec:
+  clusterIP: None
+  selector:
+    app: bgg
+    name: bggdb-po
+  ports:
+  - name: bggdb-web-port
+    port: 3306
+    targetPort: 3306
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bggdb-sts
+  namespace: bggns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bgg
+      name: bggdb-sts-po
+  volumeClaimTemplates:
+  - apiVersion: apps/v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: sts-data-vol
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: do-block-storage
+      resources:
+        requests:
+          storage: 1Gi      
+  template:
+    metadata:
+      name: bggdb-sts-po
+      labels:
+        app: bgg
+        name: bggdb-sts-po
+    spec:
+      containers:
+      - name: bggdb-sts-container
+        image: stackupiss/bgg-database:v1
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: sts-data-vol
+          mountPath: /var/lib/mysql       
